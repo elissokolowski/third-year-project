@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import math
 import os
 
-os.makedirs("q4pics", exist_ok=True)
+#os.makedirs("q4pics", exist_ok=True)
 
 def dirichletInitial(x):
 	return 0
@@ -117,13 +117,14 @@ def run(x0,x1,dx,finishTime,dt,initial,initialdt,potential,boundaryconditions):
 		
 		if (pictureCounter % pictureEvery == 0):
 			#draw picture
+			plt.clf()
 			plt.axis((x0,x1,-4.5,4.5))
 			plt.plot(xs,u,'r')
 			plt.xlabel("x")
 			plt.ylabel("y")
 			plt.grid(True)
-			plt.savefig("q4pics/a" + format(int(pictureCounter/pictureEvery), '05d') + ".png")
-			plt.clf()
+			plt.show()
+			#plt.savefig("q4pics/a" + format(int(pictureCounter/pictureEvery), '05d') + ".png")
 		
 
 
@@ -132,4 +133,4 @@ def run(x0,x1,dx,finishTime,dt,initial,initialdt,potential,boundaryconditions):
 		
 		
 		
-run(0,8,0.02, 15, 1/240, dirichletInitial, dirichletInitialDt, zeroPotential, dirichletBoundary)
+run(0,8,0.02, 15, 1/240, kinkInitial, dirichletInitialDt, zeroPotential, kinkBoundary)
