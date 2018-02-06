@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.animation import FuncAnimation
 import math
-import os
-
-os.makedirs("q4pics", exist_ok=True)
 
 def dirichletInitial(x):
 	return 0
@@ -87,49 +86,36 @@ def getSecondDerivative(f,h):
 	return d2
 
 def run(x0,x1,dx,finishTime,dt,initial,initialdt,potential,boundaryconditions):
-	u = []
-	du = []
-	xs = []
+	xs = np.arange(x0,x1,dx)
+	u = [initial(x) for x in xs]
+	du = [initialdt(x) for x in xs]
 	
-	x=x0
-	while (x < x1):
-		u.append(initial(x))
-		du.append(initialdt(x))
-		xs.append(x)
-		x += dx
+	fig, ax = plt.subplots(figsize=(5, 4))
+	ax.set(xlim=(x0, x1), ylim=(-5, 5))
+	line = ax.plot(xs, u, color='k', lw=2)[0]
 
 	N = len(xs)
-	time = 0
-	pictureCounter = 0
-	while(time < finishTime):
+	def animate(i):
 		d2 = getSecondDerivative(u,dx)
-			
+					
 		#time step CHANGE TO RK2
 		for n in range(0,N):
 			c = d2[n] - potential(u[n])
 			du[n] += c * dt
 			u[n] += du[n] * dt
-			
-			
+					
+					
 		#apply boundary conditions
 		boundaryconditions(u,du)
+			
+		line.set_ydata(u)
 		
 		
-		if (pictureCounter % pictureEvery == 0):
-			#draw picture
-			plt.axis((x0,x1,-4.5,4.5))
-			plt.plot(xs,u,'r')
-			plt.xlabel("x")
-			plt.ylabel("y")
-			plt.grid(True)
-			plt.savefig("q4pics/a" + format(int(pictureCounter/pictureEvery), '05d') + ".png")
-			plt.clf()
-		
-
-
-		pictureCounter += 1
-		time += dt
+	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int(finishTime/dt))
+	anim.save('output.mp4')
+	#plt.draw()
+	#plt.show()
 		
 		
 		
-run(0,8,0.02, 15, 1/240, dirichletInitial, dirichletInitialDt, zeroPotential, dirichletBoundary)
+run(0,6,0.02, 15, 1/60, dirichletInitial, dirichletInitialDt, zeroPotential, dirichletBoundary)
