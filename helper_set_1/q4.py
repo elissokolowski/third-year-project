@@ -118,4 +118,4 @@ def run(x0,x1,dx,finishTime,dt,initial,initialdt,potential,boundaryconditions):
 		
 		
 		
-run(0,6,0.02, 15, 1/60, dirichletInitial, dirichletInitialDt, zeroPotential, dirichletBoundary)
+run(0,6,0.02, 15, float(1)/60, dirichletInitial, dirichletInitialDt, zeroPotential, dirichletBoundary)
