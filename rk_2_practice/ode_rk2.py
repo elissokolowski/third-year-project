@@ -6,10 +6,11 @@ import cmath as cm
 def f(x, y):
 	return y
 
-xmin = 0.0 #int(input("Enter the start time value: "))
-xmax = 2.0 #int(input("Enter the final time value: "))
-step = 0.1 #int(input("Enter the step size: "))
-y0   = 1.0 #int(input("Enter the y starting value: "))
+
+xmin = 0.0 	# int(input("Enter the start time value: "))
+xmax = 2.0 	# int(input("Enter the final time value: "))
+step = 0.1 	# int(input("Enter the step size: "))
+y0 = 1.0 	# int(input("Enter the y starting value: "))
 
 nsteps = int((xmax - xmin)/step)
 print "Number of itterations: ", nsteps
