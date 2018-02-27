@@ -32,30 +32,46 @@ def kink2dot(x):
 	
 	
 
-def initial(x):
+def doubleKinkInitial(x):
 	if (x < 5):
 		return kink1(x)
 	elif (x > 8):
 		return kink2(x)
 	else:
 		return 2
-def phiDotInitial(x):
+def doubleKinkInitialDot(x):
 	if (x < 5):
 		return kink1dot(x)
 	elif (x > 8):
 		return kink2dot(x)
 	else:
 		return 0
-def potential(phi):
+def doubleWellPotential(phi):
 	return phi * lam * (phi**2 - v**2)
 def boundary(phi, pi):
 	phi[0] = -2
-	phi[-1] = -2
+	phi[-1] = 2
 	
+
+#1 = compare single point to exactResult
+#2 = compare global error with exact
+#3 = compare 3 different resolutions
+errorMode = 2
+#used for number 1 and 3
+pointToCompareTo = 1
+#used for 1 and 2
+def exactResult(x,t):
+	beta = -0.5
+	gamma = 1 / math.sqrt(1 - beta**2)
+	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
 	
 x0 = -5
-x1 = 15
-finishTime = 20
+x1 = 10
+finishTime = 10
+potential = doubleWellPotential
+initial = kink1
+phiDotInitial = kink1dot
+
 	
 	
 	
@@ -76,6 +92,10 @@ class List:
 	def length(self):
 		return len(self.li)
 
+def calculateTotalError(phi, exact, xs, t):
+	dx = xs[1] - xs[0]
+	ErrorAtPoints = [(phi[n] - exact(xs[n], t))**2 for n in range(len(xs))]
+	return math.sqrt(0.5 * dx * (2 * sum(ErrorAtPoints) - ErrorAtPoints[0] - ErrorAtPoints[-1]))
 
 def getSecondDerivative(f,h):
 	d2 = []
@@ -143,6 +163,13 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 	phi = List([initial(x) for x in xs])
 	pi = List([phiDotInitial(x) for x in xs])
 	
+	Error = [np.arange(0,finishTime,dt),[]]
+	ErrorPoint = 0
+	for i in range(len(xs)):
+		if xs[i] >= pointToCompareTo:
+			ErrorPoint = i
+			break
+	
 	fig, ax = plt.subplots(figsize=(5, 4))
 	ax.set(xlim=(x0, x1), ylim=(-5, 5))
 	line = ax.plot(xs, pi.li, color='k', lw=2)[0]
@@ -154,11 +181,40 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 		#apply boundary conditions
 		boundary(phi, pi)
 		
+		#add error to Error
+		if errorMode == 1:
+			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
+		elif errorMode == 2:
+			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
+		elif errorMode == 3:
+			Error[1].append(phi)
+			
 		line.set_ydata(phi.li)
 	
 		
 	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int(finishTime/dt))
 	anim.save(outputFile)
+	
+	return Error
 
+error1 = run(float(1)/50, float(1)/60, rk4, "output125.mp4")
+error2 = run(float(1)/200, float(1)/250, rk4, "output250.mp4")
 
-run(0.02, float(1)/60, rk4)
+errorDivision = [error1[1][n] / error2[1][2*n] for n in range(len(error1[1]))]
+orderOfConvergence = [math.log(error,2) if error != 0 else 0 for error in errorDivision]
+
+plt.clf()
+plt.plot(error1[0],error1[1][0:-1],'g')
+plt.plot(error2[0],error2[1][0:-1],'b--')
+plt.xlabel("t")
+plt.ylabel("error")
+plt.grid(True)
+plt.savefig("errors.png")
+
+plt.clf()
+plt.plot(error1[0],orderOfConvergence[0:-1],'g')
+plt.xlabel("t")
+plt.ylabel("errorOrder")
+plt.grid(True)
+plt.savefig("errorOrder.png")
+
