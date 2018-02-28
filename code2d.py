@@ -3,12 +3,9 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 import math
 
-
-
 lam = 10
 v = 2
 m = math.sqrt(lam) * v
-
 
 def kink1(x):
 	beta = -0.5
@@ -98,7 +95,6 @@ phiDotInitial = td_kink1dot
 potential = td_doubleWellPotential
 	
 	
-	
 class List:
 	def __init__(self, l):
 		self.li = l
@@ -148,8 +144,7 @@ def getSecondDerivative(phi,h):
 			
 			d2[i,j] = (d2_x + d2_y) / (h * h)
 		
-	return d2
-	
+	return d2	
 	
 def f(phi, pi, dx):
 	d2 = getSecondDerivative(phi, dx)
@@ -196,7 +191,6 @@ def rk4(phi, pi, dt, dx):
 	pi += (k1 + k2 * 2 + k3 * 2 + k4) * (float(1)/6)
 	phi += (l1 + l2 * 2 + l3 * 2 + l4) * (float(1)/6)
 	
-	
 
 def run(dx, dt, timeStepMethod, outputDir = "output"):
 	xs = np.arange(x0,x1,dx)
@@ -215,41 +209,40 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 	dataDir = outputDir + "/data"
 
 	Error = [np.arange(0,finishTime,dt),[]]
-	ErrorPoint = 0
+	ErrorPointX = 0
+	ErrorPointY = 0
 	for i in range(len(xs)):
 		if xs[i] >= pointToCompareTo:
 			ErrorPoint = i
 			break
 	
-	fig, ax = plt.subplots(figsize=(5, 4))
-	ax.set(xlim=(x0, x1), ylim=(-5, 5))
-	line = ax.plot(xs, pi.li, color='k', lw=2)[0]
+	im = plt.imshow(phi, animated=True)
 
-	N = len(xs)
 	def animate(i):
 		timeStepMethod(phi, pi, dt, dx)
 		
 		#apply boundary conditions
 		td_boundary(phi, pi)
-
-
 		
 		#add error to Error
+		#redo errors in 2d
 		if errorMode == 1:
-			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
+			Error[1].append(abs(phi[ErrorPointX, ErrorPointY] - exactResult(xs[ErrorPointX, ErrorPointY], dt * i)))
 		elif errorMode == 2:
 			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
 		elif errorMode == 3:
 			Error[1].append(phi)
 			
-		line.set_ydata(phi.li)
+		im.set_array(phi)
+		return im,
 	
 		
 	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int(finishTime/dt))
-	anim.save(outputFile)
+	anim.save('soliton_vid.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
 	
 	return Error
 
+fig = plt.figure()
 error1 = run(float(1)/50, float(1)/60, rk4, "output125")
 error2 = run(float(1)/200, float(1)/250, rk4, "output250")
 
