@@ -30,7 +30,15 @@ def kink2dot(x):
 	x0 = 12
 	return -1 * v * (1 - math.tanh(-m/math.sqrt(2) * (gamma * x - x0))**2) * m * gamma * beta / math.sqrt(2)
 	
-	
+def td_kink1(x,y):
+	beta = -0.5
+	gamma = 1 / math.sqrt(1 - beta**2)
+	return v * math.tanh(m/math.sqrt(2) * gamma * x)
+
+def td_kink1dot(x,y):
+	beta = -0.5
+	gamma = 1 / math.sqrt(1 - beta**2)
+	return v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma * beta / math.sqrt(2)
 
 def doubleKinkInitial(x):
 	if (x < 5):
@@ -48,6 +56,21 @@ def doubleKinkInitialDot(x):
 		return 0
 def doubleWellPotential(phi):
 	return phi * lam * (phi**2 - v**2)
+
+def td_doubleWellPotential(phi):
+	return phi * lam * (phi**2 - v**2)
+
+def td_boundary(phi,pi):
+	x_pts, y_pts = phi.shape
+
+	for j in range(0, y_pts):
+		phi[0,j] = 0
+		phi[x_pts - 1, j] = 0
+
+	for i in range(0, x_pts):
+		phi[i,0] = 0
+		phi[i, y_pts - 1] = 0
+
 def boundary(phi, pi):
 	phi[0] = -2
 	phi[-1] = 2
@@ -70,10 +93,9 @@ y0 = -5
 x1 = 10
 y1 = 10
 finishTime = 10
-potential = doubleWellPotential
-initial = kink1
-phiDotInitial = kink1dot
-
+initial = td_kink1
+phiDotInitial = td_kink1dot
+potential = td_doubleWellPotential
 	
 	
 	
@@ -131,8 +153,14 @@ def getSecondDerivative(phi,h):
 	
 def f(phi, pi, dx):
 	d2 = getSecondDerivative(phi, dx)
-	dVdp = [potential(p) for p in phi]
-	return List([(d-v) for d,v in zip(d2, dVdp)])
+	pot = np.zeros(phi.shape)
+	x_pts, y_pts = phi.shape
+
+	for j in range(0, y_pts):
+		for i in range(0, x_pts):
+			pot[i,j] = potential(phi[i,j])
+
+	return d2 - pot
 		
 def g(phi, pi, dx):
 	return pi
@@ -170,11 +198,22 @@ def rk4(phi, pi, dt, dx):
 	
 	
 
-def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
+def run(dx, dt, timeStepMethod, outputDir = "output"):
 	xs = np.arange(x0,x1,dx)
-	phi = List([initial(x) for x in xs])
-	pi = List([phiDotInitial(x) for x in xs])
-	
+	ys = np.arange(y0,y1,dx)
+
+	phi = np.zeros((len(xs),len(ys)))
+	pi = np.zeros((len(xs),len(ys)))
+
+	x_pts, y_pts = phi.shape
+	for j in range(0, y_pts):
+		for i in range(0, x_pts):
+			phi[i,j] = initial(i,j)
+			pi[i,j] = phiDotInitial(i,j)
+
+	outputFile = outputDir + "/output.mp4"
+	dataDir = outputDir + "/data"
+
 	Error = [np.arange(0,finishTime,dt),[]]
 	ErrorPoint = 0
 	for i in range(len(xs)):
@@ -191,7 +230,9 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 		timeStepMethod(phi, pi, dt, dx)
 		
 		#apply boundary conditions
-		boundary(phi, pi)
+		td_boundary(phi, pi)
+
+
 		
 		#add error to Error
 		if errorMode == 1:
@@ -209,8 +250,8 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 	
 	return Error
 
-error1 = run(float(1)/50, float(1)/60, rk4, "output125.mp4")
-error2 = run(float(1)/200, float(1)/250, rk4, "output250.mp4")
+error1 = run(float(1)/50, float(1)/60, rk4, "output125")
+error2 = run(float(1)/200, float(1)/250, rk4, "output250")
 
 errorDivision = [error1[1][n] / error2[1][2*n] for n in range(len(error1[1]))]
 orderOfConvergence = [math.log(error,2) if error != 0 else 0 for error in errorDivision]
