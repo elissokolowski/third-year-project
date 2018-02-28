@@ -37,20 +37,30 @@ def td_kink1dot(x,y):
 	gamma = 1 / math.sqrt(1 - beta**2)
 	return v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma * beta / math.sqrt(2)
 
+def td_kinksin(x,y):
+	return np.sin(x**2 + y**2) / (x**2 + y**2 + 0.0001)
+
+def set_zero(x,y):
+	return 0
+
 def doubleKinkInitial(x):
-	if (x < 5):
+	if (x < 0):
 		return kink1(x)
-	elif (x > 8):
+	elif (x > 0):
 		return kink2(x)
 	else:
 		return 2
 def doubleKinkInitialDot(x):
-	if (x < 5):
+	if (x < 0):
 		return kink1dot(x)
-	elif (x > 8):
+	elif (x > 0):
 		return kink2dot(x)
 	else:
 		return 0
+
+def zeroPotential(phi):
+	return 0
+
 def doubleWellPotential(phi):
 	return phi * lam * (phi**2 - v**2)
 
@@ -85,14 +95,14 @@ def exactResult(x,t):
 	gamma = 1 / math.sqrt(1 - beta**2)
 	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
 	
-x0 = -5
-y0 = -5
-x1 = 10
-y1 = 10
+x0 = -3
+y0 = -3
+x1 = 3
+y1 = 3
 finishTime = 10
-initial = td_kink1
+initial = td_kinksin
 phiDotInitial = td_kink1dot
-potential = td_doubleWellPotential
+potential = zeroPotential
 	
 	
 class List:
@@ -202,19 +212,12 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 	x_pts, y_pts = phi.shape
 	for j in range(0, y_pts):
 		for i in range(0, x_pts):
-			phi[i,j] = initial(i,j)
-			pi[i,j] = phiDotInitial(i,j)
+			phi[i,j] = initial(xs[i],ys[j])
+			pi[i,j] = phiDotInitial(xs[i],ys[j])
 
 	outputFile = outputDir + "/output.mp4"
 	dataDir = outputDir + "/data"
 
-	Error = [np.arange(0,finishTime,dt),[]]
-	ErrorPointX = 0
-	ErrorPointY = 0
-	for i in range(len(xs)):
-		if xs[i] >= pointToCompareTo:
-			ErrorPoint = i
-			break
 	
 	im = plt.imshow(phi, animated=True)
 
@@ -226,40 +229,20 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 		
 		#add error to Error
 		#redo errors in 2d
-		if errorMode == 1:
-			Error[1].append(abs(phi[ErrorPointX, ErrorPointY] - exactResult(xs[ErrorPointX, ErrorPointY], dt * i)))
-		elif errorMode == 2:
-			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
-		elif errorMode == 3:
-			Error[1].append(phi)
+		#if errorMode == 1:
+		#	Error[1].append(abs(phi[ErrorPointX, ErrorPointY] - exactResult(xs[ErrorPointX, ErrorPointY], dt * i)))
+		#elif errorMode == 2:
+		#	Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
+		#elif errorMode == 3:
+		#	Error[1].append(phi)
 			
 		im.set_array(phi)
 		return im,
 	
 		
 	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int(finishTime/dt))
-	anim.save('soliton_vid.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
-	
-	return Error
+	anim.save(outputFile, fps=30)
+	print("done")
 
 fig = plt.figure()
-error1 = run(float(1)/50, float(1)/60, rk4, "output125")
-error2 = run(float(1)/200, float(1)/250, rk4, "output250")
-
-errorDivision = [error1[1][n] / error2[1][2*n] for n in range(len(error1[1]))]
-orderOfConvergence = [math.log(error,2) if error != 0 else 0 for error in errorDivision]
-
-plt.clf()
-plt.plot(error1[0],error1[1][0:-1],'g')
-plt.plot(error2[0],error2[1][0:-1],'b--')
-plt.xlabel("t")
-plt.ylabel("error")
-plt.grid(True)
-plt.savefig("errors.png")
-
-plt.clf()
-plt.plot(error1[0],orderOfConvergence[0:-1],'g')
-plt.xlabel("t")
-plt.ylabel("errorOrder")
-plt.grid(True)
-plt.savefig("errorOrder.png")
+run(float(1)/20, float(1)/30, rk4, "output125")
