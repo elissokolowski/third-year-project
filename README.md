@@ -8,3 +8,6 @@ Computational Modelling and Numerical Solutions of Solitons and Vortices
 Solving the Heat, Laplace and Wave equations using [finite difference methods](https://www.math.ubc.ca/~peirce/M257_316_2012_Lecture_8.pdf)
 
 [similar project](https://www.reading.ac.uk/web/files/maths/NA_Report_5-02.pdf)
+
+[paper](https://arxiv.org/abs/1308.0605)
+
