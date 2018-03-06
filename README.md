@@ -9,5 +9,5 @@ Solving the Heat, Laplace and Wave equations using [finite difference methods](h
 
 [similar project](https://www.reading.ac.uk/web/files/maths/NA_Report_5-02.pdf)
 
-[paper](https://arxiv.org/abs/1308.0605)
+[Eugene's paper](https://arxiv.org/abs/1308.0605)
 
