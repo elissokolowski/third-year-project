@@ -33,19 +33,10 @@ def kink2dot(x):
 	
 
 def doubleKinkInitial(x):
-	if (x < 5):
-		return kink1(x)
-	elif (x > 8):
-		return kink2(x)
-	else:
-		return 2
+		return kink1(x) + kink2(x)
 def doubleKinkInitialDot(x):
-	if (x < 5):
-		return kink1dot(x)
-	elif (x > 8):
-		return kink2dot(x)
-	else:
-		return 0
+		return kink1dot(x) + kink2dot(x)
+
 def doubleWellPotential(phi):
 	return phi * lam * (phi**2 - v**2)
 def boundary(phi, pi):
@@ -53,7 +44,7 @@ def boundary(phi, pi):
 	phi[-1] = 2
 	
 
-#1 = compare single point to exactResult
+#1 = compare single point to exact result
 #2 = compare global error with exact
 #3 = compare 3 different resolutions
 errorMode = 2
@@ -175,6 +166,7 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 	line = ax.plot(xs, pi.li, color='k', lw=2)[0]
 
 	N = len(xs)
+
 	def animate(i):
 		timeStepMethod(phi, pi, dt, dx)
 		
@@ -200,7 +192,7 @@ def run(dx, dt, timeStepMethod, outputFile = "output.mp4"):
 error1 = run(float(1)/50, float(1)/60, rk4, "output125.mp4")
 error2 = run(float(1)/200, float(1)/250, rk4, "output250.mp4")
 
-errorDivision = [error1[1][n] / error2[1][2*n] for n in range(len(error1[1]))]
+errorDivision = [error1[1][n] / error2[1][4*n] for n in range(len(error1[1]))]
 orderOfConvergence = [math.log(error,2) if error != 0 else 0 for error in errorDivision]
 
 plt.clf()
