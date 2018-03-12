@@ -45,8 +45,8 @@ def zeroPotential(phi):
 
 # Born-von Karman (hardwall) boundary conditions
 def BVK_Boundary(phi, pi):
-	phi[0] = 0
-	phi[-1] = 0
+	phi[0] = -2
+	phi[-1] = 2
 
 
 #1 = compare single point to exact result
@@ -62,8 +62,8 @@ def exactResult(x,t):
 	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
 
 x0 = -5
-x1 = 18
-finishTime = 10
+x1 = 15
+finishTime = 50
 writeStep = 5
 potential = zeroPotential
 boundary = BVK_Boundary
@@ -184,20 +184,8 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 	while time < (finishTime / dt):
 		timeStepMethod(phi, pi, dt, dx)
 		boundary(phi, pi)
-		if time % writeStep == 0:
-			file = open(outputDir + "/" + str(time * dt) + ".txt","w+")
-			for x in range(phi.length()):
-				file.write(str(phi[x]))
-			file.close()
-		time += 1
 
-	def animate(i):
-		timeStepMethod(phi, pi, dt, dx)
-
-		#apply boundary conditions
-		boundary(phi, pi)
-
-		#add error to Error
+		# add error to Error
 		if errorMode == 1:
 			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
 		elif errorMode == 2:
@@ -205,10 +193,23 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 		elif errorMode == 3:
 			Error[1].append(phi)
 
-		line.set_ydata(phi.li)
+		if time % writeStep == 0:
+			file = open(outputDir + "/" + str(time) + ".txt","w+")
+			for x in range(phi.length()):
+				file.write(str(phi[x]) + "\n")
+			file.close()
+		time += 1
 
+	def animate(i):
+		fname = outputDir + "/" + str(i * writeStep) + ".txt"
+		with open(fname, "r") as f:
+			content = f.readlines()
 
-	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int(finishTime/dt))
+		content = [float(x.strip()) for x in content]
+
+		line.set_ydata(content)
+
+	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int((finishTime / dt) / writeStep))
 	anim.save(outputFile)
 
 	return Error
