@@ -61,14 +61,15 @@ def exactResult(x,t):
 	gamma = 1 / math.sqrt(1 - beta**2)
 	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
 
-x0 = -5
-x1 = 15
-finishTime = 50
-writeStep = 5
-potential = zeroPotential
-boundary = BVK_Boundary
-initial = kink1
-phiDotInitial = kink1dot
+
+x0 = -5                         # left simulation boundary
+x1 = 15                         # right simulation boundary
+finishTime = 50                 # total time, t=0 is always initial
+writeStep = 5                   # no. compute steps between each write
+potential = zeroPotential       # potential function(phi)
+boundary = BVK_Boundary         # boundary function(phi, pi)
+initial_phi = kink1             # initial phi(x)
+initial_pi = kink1dot           # initial pi(x)
 
 
 
@@ -158,8 +159,8 @@ def rk4(phi, pi, dt, dx):
 
 def run(dx, dt, timeStepMethod, outputDir = "output"):
 	xs = np.arange(x0,x1,dx)
-	phi = List([initial(x) for x in xs])
-	pi = List([phiDotInitial(x) for x in xs])
+	phi = List([initial_phi(x) for x in xs])
+	pi = List([initial_pi(x) for x in xs])
 
 	Error = [np.arange(0,finishTime,dt),[]]
 	ErrorPoint = 0
@@ -177,8 +178,8 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 	if not os.path.exists(outputDir):
 		os.makedirs(outputDir)
 
-	outputFile = outputDir + "/anim.mp4"
-	# add options to overwrite files etc...
+	anim_file = outputDir + "/anim.mp4"
+
 	time = 0
 
 	while time < (finishTime / dt):
@@ -210,7 +211,7 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 		line.set_ydata(content)
 
 	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int((finishTime / dt) / writeStep))
-	anim.save(outputFile)
+	anim.save(anim_file)
 
 	return Error
 
