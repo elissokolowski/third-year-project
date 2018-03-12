@@ -11,13 +11,13 @@ m = math.sqrt(lam) * v
 
 
 def kink1(x):
-	beta = -0.5
+	beta = -0.9
 	gamma = 1 / math.sqrt(1 - beta**2)
 	return v * math.tanh(m/math.sqrt(2) * gamma * x)
 def kink1dot(x):
-	beta = -0.5
+	beta = -0.9
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma * beta / math.sqrt(2)
+	return -v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma / math.sqrt(2)
 
 def kink2(x):
 	beta = 0.9
@@ -28,7 +28,7 @@ def kink2dot(x):
 	beta = 0.9
 	gamma = 1 / math.sqrt(1 - beta**2)
 	x0 = 12
-	return -1 * v * (1 - math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))**2) * m * gamma * beta / math.sqrt(2)
+	return -1 * v * (1 - math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))**2) * m * gamma / math.sqrt(2)
 
 
 
@@ -45,8 +45,8 @@ def zeroPotential(phi):
 
 # Born-von Karman (hardwall) boundary conditions
 def BVK_Boundary(phi, pi):
-	phi[0] = -2
-	phi[-1] = 2
+	phi[0] = 0
+	phi[-1] = 0
 
 
 #1 = compare single point to exact result
@@ -68,8 +68,8 @@ finishTime = 50                 # total time, t=0 is always initial
 writeStep = 5                   # no. compute steps between each write
 potential = zeroPotential       # potential function(phi)
 boundary = BVK_Boundary         # boundary function(phi, pi)
-initial_phi = kink1             # initial phi(x)
-initial_pi = kink1dot           # initial pi(x)
+initial_phi = doubleKinkInitial             # initial phi(x)
+initial_pi = doubleKinkInitialDot	# initial pi(x)
 
 
 
