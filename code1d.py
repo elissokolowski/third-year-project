@@ -2,46 +2,45 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 import math
+import sys
 import os
+from array import array
+
+import phaseShift
+import exactPhaseShift
 
 
-lam = 10
-v = 2
-m = math.sqrt(lam) * v
 
-
-def kink1(x):
-	beta = -0.9
+def kink1(x,t, beta):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return v * math.tanh(m/math.sqrt(2) * gamma * x)
-def kink1dot(x):
-	beta = -0.9
+	return 4 * math.atan(math.exp(gamma*(x+10 - beta * t)))
+def kink1dot(x, beta):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return -v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma / math.sqrt(2)
+	return -4*beta*gamma*math.exp(gamma*(x+10))/ (math.exp(gamma*(x+10))**2 +1)
 
-def kink2(x):
-	beta = 0.9
+def kink2(x,t,beta):
+	beta *= -1
 	gamma = 1 / math.sqrt(1 - beta**2)
-	x0 = 12
-	return v * math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))
-def kink2dot(x):
-	beta = 0.9
+	return 4 * math.atan(math.exp(-gamma*(x-10 - beta * t)))
+def kink2dot(x,beta):
+	beta *= -1
 	gamma = 1 / math.sqrt(1 - beta**2)
-	x0 = 12
-	return -1 * v * (1 - math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))**2) * m * gamma / math.sqrt(2)
+	return 4*beta*gamma*math.exp(-gamma*(x-10))/ (math.exp(-gamma*(x-10))**2 +1)
 
 
 
-def doubleKinkInitial(x):
-		return kink1(x) + kink2(x)
-def doubleKinkInitialDot(x):
-		return kink1dot(x) + kink2dot(x)
+def doubleKink(x,t,beta):
+	return kink1(x,t,beta) + kink2(x,t,beta) - 2*math.pi
+doubleKinkInitial = lambda x, beta : doubleKink(x,0,beta)
+def doubleKinkInitialDot(x,beta):
+	return kink1dot(x,beta) + kink2dot(x,beta)
 
-def doubleWellPotential(phi):
-	return phi * lam * (phi**2 - v**2)
+def potential(phi):
+	alpha = 0
+	s = math.sin
+	c = math.cos
+	return s(phi) * ( 1 - alpha * (s(phi)**2 - 2*c(phi) + 2*c(phi)**2))
 
-def zeroPotential(phi):
-	return 0
 
 # Born-von Karman (hardwall) boundary conditions
 def BVK_Boundary(phi, pi):
@@ -49,28 +48,16 @@ def BVK_Boundary(phi, pi):
 	phi[-1] = 0
 
 
-#1 = compare single point to exact result
-#2 = compare global error with exact
-#3 = compare 3 different resolutions
-errorMode = 2
-#used for number 1 and 3
-pointToCompareTo = 1
-#used for 1 and 2
-def exactResult(x,t):
-	beta = -0.5
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
 
-
-x0 = -5                         # left simulation boundary
-x1 = 15                         # right simulation boundary
-finishTime = 50                 # total time, t=0 is always initial
-writeStep = 5                   # no. compute steps between each write
-potential = zeroPotential       # potential function(phi)
+x0 = -15                        # left simulation boundary
+x1 = 15                      # right simulation boundary
+writeStep = 25                   # no. compute steps between each write
 boundary = BVK_Boundary         # boundary function(phi, pi)
-initial_phi = doubleKinkInitial             # initial phi(x)
+initial_phi = doubleKinkInitial     # initial phi(x)
 initial_pi = doubleKinkInitialDot	# initial pi(x)
 
+
+betas = [0.6, 0.7 ,0.9 ,0.95 , 0.99]  #set which values of beta to do
 
 
 
@@ -90,11 +77,8 @@ class List:
 		self.li[key] = value
 	def length(self):
 		return len(self.li)
-
-def calculateTotalError(phi, exact, xs, t):
-	dx = xs[1] - xs[0]
-	ErrorAtPoints = [(phi[n] - exact(xs[n], t))**2 for n in range(len(xs))]
-	return math.sqrt(0.5 * dx * (2 * sum(ErrorAtPoints) - ErrorAtPoints[0] - ErrorAtPoints[-1]))
+	def __len__(self):
+		return len(self.li)
 
 def getSecondDerivative(f,h):
 	d2 = []
@@ -125,20 +109,6 @@ def g(phi, pi, dx):
 	return pi
 
 
-def euler(phi, pi, dt, dx):
-	pi += f(phi, pi, dx) * dt
-	phi += g(phi, pi, dx) * dt
-
-def rk2(phi, pi, dt, dx):
-	k1 = f(phi, pi, dx) * dt
-	l1 = g(phi, pi, dx) * dt
-
-	k2 = f(phi + l1 * 0.5, pi + k1 * 0.5, dx) * dt
-	l2 = g(phi + l1 * 0.5, pi + k1 * 0.5, dx) * dt
-
-	pi += k2
-	phi += l2
-
 def rk4(phi, pi, dt, dx):
 	k1 = f(phi, pi, dx) * dt
 	l1 = g(phi, pi, dx) * dt
@@ -155,84 +125,85 @@ def rk4(phi, pi, dt, dx):
 	pi += (k1 + k2 * 2 + k3 * 2 + k4) * (float(1)/6)
 	phi += (l1 + l2 * 2 + l3 * 2 + l4) * (float(1)/6)
 
+	
+def getdx(gamma, howManyPointsAcross):
+	def inverse(y):
+		return math.log(abs(math.tan(y/4))) / gamma
+	width = abs(inverse(0.1) - inverse(2*math.pi - 0.1))
+	print("dx = " + str(width / howManyPointsAcross))
+	return width / howManyPointsAcross
 
 
-def run(dx, dt, timeStepMethod, outputDir = "output"):
+def run(beta, timeStepMethod):
+	gamma = 1 / math.sqrt(1 - beta**2)
+	print("\nRunnign with beta = " + str(beta) + "    gamma = " + str(gamma))
+	dx = getdx(gamma, 80)
+	dt = dx / 1.5
 	xs = np.arange(x0,x1,dx)
-	phi = List([initial_phi(x) for x in xs])
-	pi = List([initial_pi(x) for x in xs])
-
-	Error = [np.arange(0,finishTime,dt),[]]
-	ErrorPoint = 0
-	for i in range(len(xs)):
-		if xs[i] >= pointToCompareTo:
-			ErrorPoint = i
-			break
-
-	fig, ax = plt.subplots(figsize=(5, 4))
-	ax.set(xlim=(x0, x1), ylim=(-5, 5))
-	line = ax.plot(xs, pi.li, color='k', lw=2)[0]
+	phi = List([initial_phi(x,beta) for x in xs])
+	pi = List([initial_pi(x,beta) for x in xs])
 
 	N = len(xs)
-
-	if not os.path.exists(outputDir):
-		os.makedirs(outputDir)
-
-	anim_file = outputDir + "/anim.mp4"
+	
+	folder = "images/" + str(beta)
+	if not os.path.isdir(folder):
+		os.mkdir(folder)
+	if not os.path.isdir("data/"):
+		os.mkdir("data/")
+	dataFile = open("data/" + str(beta), 'wb')
+	#writing header for binary data file
+	#lenght, x0, x1, dx, timeBetween
+	array('i' , [len(phi)]).tofile(dataFile)
+	array('d', [x0,x1, dx, dt*writeStep]).tofile(dataFile)
 
 	time = 0
+	pictureCounter = 1
+	finishTime = 20 / beta #distance / speed
+	print("Finish time is " + str(finishTime))
 
-	while time < (finishTime / dt):
+	while time < finishTime:
 		timeStepMethod(phi, pi, dt, dx)
 		boundary(phi, pi)
+		
+		if pictureCounter % writeStep == 0:
+			array('d', phi.li).tofile(dataFile)
+			
+			
+			plt.clf()
+			plt.plot(xs,phi,'g')
+			plt.plot(xs,[doubleKink(x,time,beta) for x in xs],'b--')
+			plt.xlabel("t")
+			plt.ylabel("phi")
+			plt.axis([x0,x1,-7,7])
+			plt.grid(True)
+			plt.savefig(folder + "/phi" + str(int(pictureCounter / writeStep)) + ".png")
+		
+		time += dt
+		pictureCounter += 1
+		
+	dataFile.close()
+		
+	#get phase difference
+	phaseS = phaseShift.getPhaseShift(xs, time, lambda x,t : doubleKink(x,t,beta), phi, -math.pi)
+	return phaseS
 
-		# add error to Error
-		if errorMode == 1:
-			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
-		elif errorMode == 2:
-			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
-		elif errorMode == 3:
-			Error[1].append(phi)
+phaseShifts = [run(beta, rk4) for beta in betas]
+betaGammas = [beta / math.sqrt(1 - beta**2) for beta in betas]
 
-		if time % writeStep == 0:
-			file = open(outputDir + "/" + str(time) + ".txt","w+")
-			for x in range(phi.length()):
-				file.write(str(phi[x]) + "\n")
-			file.close()
-		time += 1
+phaseShift = open("phaseshifts.txt", 'w')
+for b, p in zip(betaGammas, phaseShifts):
+	phaseShift.write(str(b) + " " + str(p) + "\n")
+phaseShift.close()
 
-	def animate(i):
-		fname = outputDir + "/" + str(i * writeStep) + ".txt"
-		with open(fname, "r") as f:
-			content = f.readlines()
-
-		content = [float(x.strip()) for x in content]
-
-		line.set_ydata(content)
-
-	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int((finishTime / dt) / writeStep))
-	anim.save(anim_file)
-
-	return Error
-
-error1 = run(float(1)/50, float(1)/60, rk4, "kink_collision")
-
-
-errorDivision = [error1[1][n] / error2[1][4*n] for n in range(len(error1[1]))]
-orderOfConvergence = [math.log(error,2) if error != 0 else 0 for error in errorDivision]
+b, p = exactPhaseShift.getExactPhaseShift(0, 1.5, 10)
 
 plt.clf()
-plt.plot(error1[0],error1[1][0:-1],'g')
-plt.plot(error2[0],error2[1][0:-1],'b--')
-plt.xlabel("t")
-plt.ylabel("error")
+plt.scatter(betaGammas, phaseShifts)
+plt.plot(b,p, 'g')
+plt.xlabel(r"$\beta \gamma$")
+plt.ylabel("phase shift")
 plt.grid(True)
-plt.savefig("errors.png")
+plt.savefig("phaseshift.png")
 
-plt.clf()
-plt.plot(error1[0],orderOfConvergence[0:-1],'g')
-plt.xlabel("t")
-plt.ylabel("errorOrder")
-plt.grid(True)
-plt.savefig("errorOrder.png")
+
 

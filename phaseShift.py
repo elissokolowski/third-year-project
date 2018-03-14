@@ -12,9 +12,10 @@ def getXatPoint(xs, list, point):
 
 #assuming that both 'exact' and 'calculated' start above 'point' and decrease to below
 def getPhaseShift(xs, t, exact, calculated, point):
-	exactList = [exact(t, x) for x in xs]
+	exactList = [exact(x, t) for x in xs]
 	
 	Xe = getXatPoint(xs, exactList, point)
 	Xc = getXatPoint(xs, calculated, point)
 	
 	return abs(Xe - Xc)
+
