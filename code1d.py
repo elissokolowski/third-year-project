@@ -3,32 +3,36 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 import math
 import os
+from decimal import *
 
 
-lam = 10
+lam = 100
 v = 2
 m = math.sqrt(lam) * v
 
 
 def kink1(x):
-	beta = -0.9
+	beta = 0.5
+	xi = -0
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return v * math.tanh(m/math.sqrt(2) * gamma * x)
+	return v * math.tanh(m/math.sqrt(2) * gamma * (x - xi))
+
 def kink1dot(x):
-	beta = -0.9
+	beta = -0.5
+	xi = -5
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return -v * (1 - math.tanh(m/math.sqrt(2) * gamma * x)**2) * m * gamma / math.sqrt(2)
+	return v *(1 - math.tanh(m/math.sqrt(2) * gamma * (x - xi))**2) * m * gamma / math.sqrt(2)
 
 def kink2(x):
-	beta = 0.9
+	beta = 0.5
 	gamma = 1 / math.sqrt(1 - beta**2)
-	x0 = 12
-	return v * math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))
+	xi = 5
+	return -v * math.tanh(m/math.sqrt(2) * (gamma * (x - xi)))
 def kink2dot(x):
-	beta = 0.9
+	beta = 0.5
 	gamma = 1 / math.sqrt(1 - beta**2)
-	x0 = 12
-	return -1 * v * (1 - math.tanh(-m/math.sqrt(2) * (gamma * (x - x0)))**2) * m * gamma / math.sqrt(2)
+	xi = 5
+	return v * beta *(1 - math.tanh(m/math.sqrt(2) * (gamma * (x - xi)))**2) * m * gamma / math.sqrt(2)
 
 
 
@@ -39,14 +43,23 @@ def doubleKinkInitialDot(x):
 
 def doubleWellPotential(phi):
 	return phi * lam * (phi**2 - v**2)
+def newPotential(phi):
+	alpha = 0.5
+	return (1 - math.cos(phi)) * (1 - alpha * math.sin(phi)**2)
+def newPotentialPrime(phi):
+	alpha = 0.5
+	return (math.sin(phi) * (1 - alpha * math.sin(phi)**2)) + ((1 - math.cos(phi)) * (-2 * alpha * math.sin(phi) * math.cos(phi)))
+
+def sineGordonPotential(phi):
+	return -(math.pi / 2) * math.sin(phi * math.pi / 2)
 
 def zeroPotential(phi):
 	return 0
 
 # Born-von Karman (hardwall) boundary conditions
 def BVK_Boundary(phi, pi):
-	phi[0] = 0
-	phi[-1] = 0
+	phi[0] = -2
+	phi[-1] = 2
 
 
 #1 = compare single point to exact result
@@ -56,20 +69,30 @@ errorMode = 2
 #used for number 1 and 3
 pointToCompareTo = 1
 #used for 1 and 2
-def exactResult(x,t):
+def kink1exactResult(x,t):
+	beta = 0.0
+	xi = -0
+	gamma = 1 / math.sqrt(1 - (beta**2))
+	return v * math.tanh((m/math.sqrt(2)) * gamma * ((x - xi) - (beta * t)))
+
+def kink2exactResult(x,t):
 	beta = -0.5
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return v * math.tanh(m/math.sqrt(2) * gamma * (x - beta * t))
+	xi = 5
+	gamma = 1 / math.sqrt(1 - (beta**2))
+	return -v * math.tanh((m/math.sqrt(2)) * gamma * ((x - xi) - (beta * t)))
+
+def exactResult(x,t):
+	return kink1exactResult(x,t)
 
 
-x0 = -5                         # left simulation boundary
+x0 = -15                         # left simulation boundary
 x1 = 15                         # right simulation boundary
-finishTime = 50                 # total time, t=0 is always initial
-writeStep = 5                   # no. compute steps between each write
-potential = zeroPotential       # potential function(phi)
+finishTime = 10               # total time, t=0 is always initial
+writeStep = 10                   # no. compute steps between each write
+potential = sineGordonPotential     # potential function(phi)
 boundary = BVK_Boundary         # boundary function(phi, pi)
-initial_phi = doubleKinkInitial             # initial phi(x)
-initial_pi = doubleKinkInitialDot	# initial pi(x)
+initial_phi = kink1             # initial phi(x)
+initial_pi = zeroPotential	# initial pi(x)
 
 
 
@@ -119,6 +142,7 @@ def getSecondDerivative(f,h):
 def f(phi, pi, dx):
 	d2 = getSecondDerivative(phi, dx)
 	dVdp = [potential(p) for p in phi]
+	# Return second time derivative
 	return List([(d-v) for d,v in zip(d2, dVdp)])
 
 def g(phi, pi, dx):
@@ -133,8 +157,8 @@ def rk2(phi, pi, dt, dx):
 	k1 = f(phi, pi, dx) * dt
 	l1 = g(phi, pi, dx) * dt
 
-	k2 = f(phi + l1 * 0.5, pi + k1 * 0.5, dx) * dt
-	l2 = g(phi + l1 * 0.5, pi + k1 * 0.5, dx) * dt
+	k2 = f(phi + l1 * 0.5, pi + (k1 * 0.5), dx) * dt
+	l2 = g(phi + l1 * 0.5, pi + (k1 * 0.5), dx) * dt
 
 	pi += k2
 	phi += l2
@@ -158,6 +182,7 @@ def rk4(phi, pi, dt, dx):
 
 
 def run(dx, dt, timeStepMethod, outputDir = "output"):
+	getcontext().prec = 28
 	xs = np.arange(x0,x1,dx)
 	phi = List([initial_phi(x) for x in xs])
 	pi = List([initial_pi(x) for x in xs])
@@ -171,12 +196,15 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 
 	fig, ax = plt.subplots(figsize=(5, 4))
 	ax.set(xlim=(x0, x1), ylim=(-5, 5))
-	line = ax.plot(xs, pi.li, color='k', lw=2)[0]
+	line = ax.plot(xs, pi.li, color='k', lw=1)[0]
+	lineEx = ax.plot(xs, pi.li, color='r', lw=1)[0]
 
 	N = len(xs)
 
 	if not os.path.exists(outputDir):
 		os.makedirs(outputDir)
+	if not os.path.exists(outputDir + "/raw"):
+		os.makedirs(outputDir + "/raw")
 
 	anim_file = outputDir + "/anim.mp4"
 
@@ -187,35 +215,38 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 		boundary(phi, pi)
 
 		# add error to Error
-		if errorMode == 1:
-			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
-		elif errorMode == 2:
-			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
-		elif errorMode == 3:
-			Error[1].append(phi)
+#		if errorMode == 1:
+#			Error[1].append(abs(phi[ErrorPoint] - exactResult(xs[ErrorPoint], dt * i)))
+#		elif errorMode == 2:
+#			Error[1].append(calculateTotalError(phi, exactResult, xs, dt * i))
+#		elif errorMode == 3:
+#			Error[1].append(phi)
 
 		if time % writeStep == 0:
-			file = open(outputDir + "/" + str(time) + ".txt","w+")
+			file = open(outputDir + "/raw/" + str(time) + ".txt","w+")
 			for x in range(phi.length()):
 				file.write(str(phi[x]) + "\n")
 			file.close()
+			print(time * dt)
 		time += 1
 
 	def animate(i):
-		fname = outputDir + "/" + str(i * writeStep) + ".txt"
+		fname = outputDir + "/raw/" + str(i * writeStep) + ".txt"
 		with open(fname, "r") as f:
 			content = f.readlines()
 
-		content = [float(x.strip()) for x in content]
-
+		content = np.array([float(x.strip()) for x in content])
+		contentEx = np.array([exactResult((x*dx) + x0, i*writeStep * dt) for x in range(len(content))])
 		line.set_ydata(content)
+		lineEx.set_ydata(contentEx)
 
-	anim = FuncAnimation(fig, animate, interval= dt*1000, frames=int((finishTime / dt) / writeStep))
+
+	anim = FuncAnimation(fig, animate, interval= dt*1000*writeStep, frames=int((finishTime / dt) / writeStep))
 	anim.save(anim_file)
 
 	return Error
 
-error1 = run(float(1)/50, float(1)/60, rk4, "kink_collision")
+error1 = run(float(1)/60, float(1)/100, rk4, "kink_collision_sg_tru_2")
 
 
 errorDivision = [error1[1][n] / error2[1][4*n] for n in range(len(error1[1]))]
