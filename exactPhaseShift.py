@@ -35,9 +35,10 @@ def f2(x,y, alpha):
 
 def getExactPhaseShift(alpha, gamma0, gamma1):
 	M = integrate(lambda phi: f1(phi, alpha), 0, deltaphi, 0.01)
-	deltaXgammaBeta = 1/(2 * M) * integrate2d(lambda x, y : f2(x,y, alpha), 0.01, deltaphi, 0.01, deltaphi, 0.01, 0.01)
+	deltaXgammaBeta = 1/(2 * M) * integrate2d(lambda x, y : f2(x,y, alpha), 0.0001, deltaphi, 0.0001, deltaphi, 0.01, 0.01)
 
 	gammaBetas = np.arange(gamma0, gamma1, 0.2)
 	deltaXs = [deltaXgammaBeta / gammaBeta for gammaBeta in gammaBetas]
 
-	return gammaBetas, deltaXs
+	return gammaBetas, deltaXs, deltaXgammaBeta
+

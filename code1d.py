@@ -9,23 +9,24 @@ from array import array
 import phaseShift
 import exactPhaseShift
 
-
+startSpacing = 10
+alpha = 0.95
 
 def kink1(x,t, beta):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4 * math.atan(math.exp(gamma*(x+10 - beta * t)))
+	return 4 * math.atan(math.exp(gamma*(x+startSpacing - beta * t)))
 def kink1dot(x, beta):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return -4*beta*gamma*math.exp(gamma*(x+10))/ (math.exp(gamma*(x+10))**2 +1)
+	return -4*beta*gamma*math.exp(gamma*(x+startSpacing))/ (math.exp(gamma*(x+startSpacing))**2 +1)
 
 def kink2(x,t,beta):
 	beta *= -1
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4 * math.atan(math.exp(-gamma*(x-10 - beta * t)))
+	return 4 * math.atan(math.exp(-gamma*(x-startSpacing - beta * t)))
 def kink2dot(x,beta):
 	beta *= -1
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4*beta*gamma*math.exp(-gamma*(x-10))/ (math.exp(-gamma*(x-10))**2 +1)
+	return 4*beta*gamma*math.exp(-gamma*(x-startSpacing))/ (math.exp(-gamma*(x-startSpacing))**2 +1)
 
 
 
@@ -36,10 +37,9 @@ def doubleKinkInitialDot(x,beta):
 	return kink1dot(x,beta) + kink2dot(x,beta)
 
 def potential(phi):
-	alpha = 0
 	s = math.sin
 	c = math.cos
-	return s(phi) * ( 1 - alpha * (s(phi)**2 - 2*c(phi) + 2*c(phi)**2))
+	return s(phi) * ( 1 - alpha * (s(phi)**2 + 2*c(phi) - 2*c(phi)**2))
 
 
 # Born-von Karman (hardwall) boundary conditions
@@ -49,15 +49,15 @@ def BVK_Boundary(phi, pi):
 
 
 
-x0 = -15                        # left simulation boundary
-x1 = 15                      # right simulation boundary
-writeStep = 25                   # no. compute steps between each write
+x0 = - startSpacing - 5                        # left simulation boundary
+x1 = startSpacing + 5                      # right simulation boundary
+writeStep = 50                   # no. compute steps between each write
 boundary = BVK_Boundary         # boundary function(phi, pi)
 initial_phi = doubleKinkInitial     # initial phi(x)
 initial_pi = doubleKinkInitialDot	# initial pi(x)
 
 
-betas = [0.6, 0.7 ,0.9 ,0.95 , 0.99]  #set which values of beta to do
+betas = [0.9, 0.96, 0.98, 0.99]  #set which values of beta to do
 
 
 
@@ -129,16 +129,16 @@ def rk4(phi, pi, dt, dx):
 def getdx(gamma, howManyPointsAcross):
 	def inverse(y):
 		return math.log(abs(math.tan(y/4))) / gamma
-	width = abs(inverse(0.1) - inverse(2*math.pi - 0.1))
+	width = abs(inverse(0.2) - inverse(2*math.pi - 0.2))
 	print("dx = " + str(width / howManyPointsAcross))
 	return width / howManyPointsAcross
 
 
 def run(beta, timeStepMethod):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	print("\nRunnign with beta = " + str(beta) + "    gamma = " + str(gamma))
+	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gamma))
 	dx = getdx(gamma, 80)
-	dt = dx / 1.5
+	dt = dx / 2
 	xs = np.arange(x0,x1,dx)
 	phi = List([initial_phi(x,beta) for x in xs])
 	pi = List([initial_pi(x,beta) for x in xs])
@@ -152,13 +152,13 @@ def run(beta, timeStepMethod):
 		os.mkdir("data/")
 	dataFile = open("data/" + str(beta), 'wb')
 	#writing header for binary data file
-	#lenght, x0, x1, dx, timeBetween
+	#length, x0, x1, dx, timeBetween
 	array('i' , [len(phi)]).tofile(dataFile)
 	array('d', [x0,x1, dx, dt*writeStep]).tofile(dataFile)
 
 	time = 0
 	pictureCounter = 1
-	finishTime = 20 / beta #distance / speed
+	finishTime = 2 * startSpacing / beta #distance / speed
 	print("Finish time is " + str(finishTime))
 
 	while time < finishTime:
@@ -167,7 +167,6 @@ def run(beta, timeStepMethod):
 		
 		if pictureCounter % writeStep == 0:
 			array('d', phi.li).tofile(dataFile)
-			
 			
 			plt.clf()
 			plt.plot(xs,phi,'g')
@@ -195,7 +194,7 @@ for b, p in zip(betaGammas, phaseShifts):
 	phaseShift.write(str(b) + " " + str(p) + "\n")
 phaseShift.close()
 
-b, p = exactPhaseShift.getExactPhaseShift(0, 1.5, 10)
+b, p, dxb = exactPhaseShift.getExactPhaseShift(alpha, 1.5, 100)
 
 plt.clf()
 plt.scatter(betaGammas, phaseShifts)
@@ -204,6 +203,18 @@ plt.xlabel(r"$\beta \gamma$")
 plt.ylabel("phase shift")
 plt.grid(True)
 plt.savefig("phaseshift.png")
+
+print(" ")
+for b, p in zip(betaGammas, phaseShifts):
+	exact = dxb / b
+	print("ratio is  " + str(exact / p))
+print(" ")
+for b, p in zip(betaGammas, phaseShifts):
+	exact = dxb / b
+	print("shift is  " + str(exact - p))
+
+
+
 
 
 
