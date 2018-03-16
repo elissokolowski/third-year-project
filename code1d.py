@@ -7,7 +7,7 @@ import os
 from array import array
 
 import phaseShift
-import exactPhaseShift
+import plotPhaseShifts
 
 startSpacing = 10
 alpha = 0.95
@@ -194,15 +194,8 @@ for b, p in zip(betaGammas, phaseShifts):
 	phaseShift.write(str(b) + " " + str(p) + "\n")
 phaseShift.close()
 
-b, p, dxb = exactPhaseShift.getExactPhaseShift(alpha, 1.5, 100)
+plotPhaseShifts.plot(0.95, 1.5, 10)
 
-plt.clf()
-plt.scatter(betaGammas, phaseShifts)
-plt.plot(b,p, 'g')
-plt.xlabel(r"$\beta \gamma$")
-plt.ylabel("phase shift")
-plt.grid(True)
-plt.savefig("phaseshift.png")
 
 print(" ")
 for b, p in zip(betaGammas, phaseShifts):
