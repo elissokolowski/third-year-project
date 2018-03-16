@@ -39,7 +39,7 @@ def potential(phi):
 	alpha = 0
 	s = math.sin
 	c = math.cos
-	return s(phi) * ( 1 - alpha * (s(phi)**2 - 2*c(phi) + 2*c(phi)**2))
+	return s(phi) * ( 1 - alpha * (s(phi)**2 + 2*c(phi) - 2*c(phi)**2))
 
 
 # Born-von Karman (hardwall) boundary conditions
@@ -136,7 +136,7 @@ def getdx(gamma, howManyPointsAcross):
 
 def run(beta, timeStepMethod):
 	gamma = 1 / math.sqrt(1 - beta**2)
-	print("\nRunnign with beta = " + str(beta) + "    gamma = " + str(gamma))
+	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gamma))
 	dx = getdx(gamma, 80)
 	dt = dx / 1.5
 	xs = np.arange(x0,x1,dx)
