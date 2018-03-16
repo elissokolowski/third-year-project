@@ -6,33 +6,34 @@ import os
 from decimal import *
 
 
-lam = 100
+lam = 1
 v = 2
 m = math.sqrt(lam) * v
 
 
 def kink1(x):
 	beta = 0.5
-	xi = -0
+	xi = -5
 	gamma = 1 / math.sqrt(1 - beta**2)
 	return v * math.tanh(m/math.sqrt(2) * gamma * (x - xi))
 
 def kink1dot(x):
-	beta = -0.5
+	beta = 0.5
 	xi = -5
 	gamma = 1 / math.sqrt(1 - beta**2)
-	return v *(1 - math.tanh(m/math.sqrt(2) * gamma * (x - xi))**2) * m * gamma / math.sqrt(2)
+	return v * -1 * beta * (1 - math.tanh(m/math.sqrt(2) * gamma * (x - xi))**2) * m * gamma / math.sqrt(2)
 
 def kink2(x):
-	beta = 0.5
+	beta = -0.5
 	gamma = 1 / math.sqrt(1 - beta**2)
 	xi = 5
-	return -v * math.tanh(m/math.sqrt(2) * (gamma * (x - xi)))
+	return v * math.tanh(m/math.sqrt(2) * (gamma * -(x - xi)))
+
 def kink2dot(x):
-	beta = 0.5
+	beta = -0.5
 	gamma = 1 / math.sqrt(1 - beta**2)
 	xi = 5
-	return v * beta *(1 - math.tanh(m/math.sqrt(2) * (gamma * (x - xi)))**2) * m * gamma / math.sqrt(2)
+	return v * beta * (1 - math.tanh(m/math.sqrt(2) * (gamma * -(x - xi)))**2) * m * gamma / math.sqrt(2)
 
 
 
@@ -50,8 +51,11 @@ def newPotentialPrime(phi):
 	alpha = 0.5
 	return (math.sin(phi) * (1 - alpha * math.sin(phi)**2)) + ((1 - math.cos(phi)) * (-2 * alpha * math.sin(phi) * math.cos(phi)))
 
-def sineGordonPotential(phi):
-	return -(math.pi / 2) * math.sin(phi * math.pi / 2)
+def sineGordonPotential2(phi):
+	return math.pi * math.sin(phi * math.pi)
+
+def massPotential(phi):
+	return (m**3/lam**0.5) * math.sin(lam**0.5 * phi / m)
 
 def zeroPotential(phi):
 	return 0
@@ -60,7 +64,10 @@ def zeroPotential(phi):
 def BVK_Boundary(phi, pi):
 	phi[0] = -2
 	phi[-1] = 2
-
+# Born-von Karman (hardwall) boundary conditions
+def BVK_2k_Boundary(phi, pi):
+	phi[0] = 2
+	phi[-1] = -2
 
 #1 = compare single point to exact result
 #2 = compare global error with exact
@@ -70,8 +77,8 @@ errorMode = 2
 pointToCompareTo = 1
 #used for 1 and 2
 def kink1exactResult(x,t):
-	beta = 0.0
-	xi = -0
+	beta = 0.5
+	xi = -5
 	gamma = 1 / math.sqrt(1 - (beta**2))
 	return v * math.tanh((m/math.sqrt(2)) * gamma * ((x - xi) - (beta * t)))
 
@@ -82,19 +89,17 @@ def kink2exactResult(x,t):
 	return -v * math.tanh((m/math.sqrt(2)) * gamma * ((x - xi) - (beta * t)))
 
 def exactResult(x,t):
-	return kink1exactResult(x,t)
+	return kink1exactResult(x,t) + kink2exactResult(x, t)
 
 
-x0 = -15                         # left simulation boundary
+x0 = -15                          # left simulation boundary
 x1 = 15                         # right simulation boundary
 finishTime = 10               # total time, t=0 is always initial
 writeStep = 10                   # no. compute steps between each write
-potential = sineGordonPotential     # potential function(phi)
-boundary = BVK_Boundary         # boundary function(phi, pi)
-initial_phi = kink1             # initial phi(x)
-initial_pi = zeroPotential	# initial pi(x)
-
-
+potential = doubleWellPotential			# potential function(phi)
+boundary = BVK_2k_Boundary      # boundary function(phi, pi)
+initial_phi = kink2          	# initial phi(x)
+initial_pi = kink2dot			# initial pi(x)
 
 
 class List:
@@ -246,7 +251,7 @@ def run(dx, dt, timeStepMethod, outputDir = "output"):
 
 	return Error
 
-error1 = run(float(1)/60, float(1)/100, rk4, "kink_collision_sg_tru_2")
+error1 = run(float(1)/60, float(1)/100, rk4, "static_phi4")
 
 
 errorDivision = [error1[1][n] / error2[1][4*n] for n in range(len(error1[1]))]
