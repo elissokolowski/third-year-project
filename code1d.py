@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 import math
+import datetime as d
 import sys
 import os
 from array import array
@@ -13,12 +14,9 @@ import plotPhaseShifts
 
 import twokinks as initial
 #import kinkantikink as initial
-alpha = 0
+alpha = 0.5
 writeStep = 50                   # no. compute steps between each write
 betas = [0.9, 0.96, 0.98, 0.99]  #set which values of beta to do
-
-
-
 
 
 
@@ -32,25 +30,6 @@ x1 = initial.startSpacing + 5                      # right simulation boundary
 initial_phi = initial.doubleKinkInitial     # initial phi(x)
 initial_pi = initial.doubleKinkInitialDot	# initial pi(x)
 
-class List:
-	def __init__(self, l):
-		self.li = l
-	def __iadd__(self, other):
-		self.li = [x+y for x,y in zip(self.li, other.li)]
-		return self
-	def __add__(self, other):
-		return List([x+y for x,y in zip(self.li, other.li)])
-	def __mul__(self, other):
-		return List([x * other for x in self.li])
-	def __getitem__(self, key):
-		return self.li[key]
-	def __setitem__(self, key, value):
-		self.li[key] = value
-	def length(self):
-		return len(self.li)
-	def __len__(self):
-		return len(self.li)
-
 def getSecondDerivative(f,h):
 	d2 = []
 
@@ -59,7 +38,7 @@ def getSecondDerivative(f,h):
 	d2.append(top / (h * h))
 
 	#middle
-	N = f.length()
+	N = len(f)
 	for n in range(1,N-1):
 		top = f[n+1] - 2*f[n] + f[n-1]
 		d2.append(top / (h * h))
@@ -74,7 +53,7 @@ def getSecondDerivative(f,h):
 def f(phi, pi, dx):
 	d2 = getSecondDerivative(phi, dx)
 	dVdp = [potential(p) for p in phi]
-	return List([(d-v) for d,v in zip(d2, dVdp)])
+	return np.array([(d-v) for d,v in zip(d2, dVdp)])
 
 def g(phi, pi, dx):
 	return pi
@@ -105,24 +84,31 @@ def getdx(gamma, howManyPointsAcross):
 
 
 def run(beta, timeStepMethod, dx = 0):
+	runtime = d.datetime.now().isoformat()
+
 	gamma = 1 / math.sqrt(1 - beta**2)
 	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gamma))
 	if dx == 0:
 		dx = getdx(gamma, 80)
 	dt = dx / 2
 	print("dx = " + str(dx))
-	xs = np.arange(x0,x1,dx)
-	phi = List([initial_phi(x,beta) for x in xs])
-	pi = List([initial_pi(x,beta) for x in xs])
 
-	N = len(xs)
-	
-	folder = "images/" + str(beta)
-	if not os.path.isdir(folder):
-		os.mkdir(folder)
-	if not os.path.isdir("data/"):
+	xs = np.arange(x0,x1,dx)
+	phi = np.array([initial_phi(x,beta) for x in xs])
+	pi = np.array([initial_pi(x,beta) for x in xs])
+
+	dataFolder = "data/" + runtime + "/"
+	imagesFolder = dataFolder + "images/"
+
+	if not os.path.exists("data/"):
 		os.mkdir("data/")
+	if not os.path.exists(dataFolder):
+		os.mkdir(dataFolder)
+	if not os.path.exists(imagesFolder):
+		os.mkdir(imagesFolder)
+
 	dataFile = open("data/" + str(beta), 'wb')
+
 	#writing header for binary data file
 	#length, x0, x1, dx, timeBetween
 	array('i' , [len(phi)]).tofile(dataFile)
@@ -147,12 +133,24 @@ def run(beta, timeStepMethod, dx = 0):
 			plt.ylabel(r"$\phi$")
 			plt.axis([x0,x1, initial.plotHeight0, initial.plotHeight1])
 			plt.grid(True)
-			plt.savefig(folder + "/phi" + str(int(pictureCounter / writeStep)) + ".png")
+			plt.savefig(imagesFolder + "phi" + str(int(pictureCounter / writeStep)) + ".png")
 		
 		time += dt
 		pictureCounter += 1
 		
 	dataFile.close()
+
+	def animate(i):
+		fname = outputDir + "/" + str(i * writeStep) + ".txt"
+		with open(fname, "r") as f:
+			content = f.readlines()
+
+		content = [float(x.strip()) for x in content]
+
+		line.set_ydata(content)
+
+	anim = FuncAnimation(fig, animate, interval=dt * 1000, frames=int((finishTime / dt) / writeStep))
+	anim.save(anim_file)
 		
 	#get phase difference
 	phaseS = phaseShift.getPhaseShift(xs, time, lambda x,t : initial.doubleKink(x,t,beta), phi, initial.pointToGetPhaseShiftAt)
