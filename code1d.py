@@ -3,6 +3,8 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 import math
 import datetime as d
+import time as tm
+import fnmatch as fn
 import sys
 import os
 from array import array
@@ -15,10 +17,18 @@ import plotPhaseShifts
 import twokinks as initial
 #import kinkantikink as initial
 alpha = 0.5
-writeStep = 50                   # no. compute steps between each write
-betas = [0.9, 0.96, 0.98, 0.99]  #set which values of beta to do
+writeStep = 20 # no. compute steps between each write
+betas = np.arange(0.96, 0.999, 0.003)  #set which values of beta to do
+
+experiment = "test_2"
+dataFolder = "data/" + experiment + "/"
+rawFolder = dataFolder + "raw/"
+imagesFolder = dataFolder + "images/"
+anim_file = dataFolder + "anim.mp4"
 
 
+def gamma(v):
+	return 1 / math.sqrt(1 - v**2)
 
 def potential(phi):
 	s = math.sin
@@ -82,23 +92,28 @@ def getdx(gamma, howManyPointsAcross):
 	width = abs(inverse(0.2) - inverse(2*math.pi - 0.2))
 	return width / howManyPointsAcross
 
-
 def run(beta, timeStepMethod, dx = 0):
-	runtime = d.datetime.now().isoformat()
+	gam = gamma(beta)
+	experiment = "test" + str(beta)
+	dataFolder = "data/" + experiment + "/"
+	rawFolder = dataFolder + "raw/"
+	imagesFolder = dataFolder + "images/"
+	anim_file = dataFolder + "anim.mp4"
 
-	gamma = 1 / math.sqrt(1 - beta**2)
-	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gamma))
-	if dx == 0:
-		dx = getdx(gamma, 80)
-	dt = dx / 2
+	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gam))
+
+	dx = getdx(gam,80)
+	dt = dx / float(1.2)
+
 	print("dx = " + str(dx))
 
 	xs = np.arange(x0,x1,dx)
 	phi = np.array([initial_phi(x,beta) for x in xs])
 	pi = np.array([initial_pi(x,beta) for x in xs])
 
-	dataFolder = "data/" + runtime + "/"
-	imagesFolder = dataFolder + "images/"
+	fig, ax = plt.subplots(figsize=(5, 4))
+	ax.set(xlim=(x0, x1), ylim=(initial.plotHeight0, initial.plotHeight1))
+	line = ax.plot(xs, phi, color='k', lw=1)[0]
 
 	if not os.path.exists("data/"):
 		os.mkdir("data/")
@@ -106,42 +121,32 @@ def run(beta, timeStepMethod, dx = 0):
 		os.mkdir(dataFolder)
 	if not os.path.exists(imagesFolder):
 		os.mkdir(imagesFolder)
+	if not os.path.exists(rawFolder):
+		os.mkdir(rawFolder)
 
-	dataFile = open("data/" + str(beta), 'wb')
-
-	#writing header for binary data file
-	#length, x0, x1, dx, timeBetween
-	array('i' , [len(phi)]).tofile(dataFile)
-	array('d', [x0,x1, dx, dt*writeStep]).tofile(dataFile)
 
 	time = 0
-	pictureCounter = 1
-	finishTime = 2 * initial.startSpacing / beta #distance / speed
+	pictureCounter = 0
+	finishTime = int(2 * initial.startSpacing / beta) #distance / speed
+	steps = finishTime / dt
 	print("Finish time is " + str(finishTime))
+	print("Number of time steps: " + str(steps))
 
 	while time < finishTime:
 		timeStepMethod(phi, pi, dt, dx)
 		initial.boundary(phi, pi)
 		
 		if pictureCounter % writeStep == 0:
-			#array('d', phi.li).tofile(dataFile)
-			
-			plt.clf()
-			plt.plot(xs,phi,'g')
-			plt.plot(xs,[initial.doubleKink(x,time,beta) for x in xs],'b--')
-			plt.xlabel("x")
-			plt.ylabel(r"$\phi$")
-			plt.axis([x0,x1, initial.plotHeight0, initial.plotHeight1])
-			plt.grid(True)
-			plt.savefig(imagesFolder + "phi" + str(int(pictureCounter / writeStep)) + ".png")
-		
+			np.savetxt(rawFolder + str(pictureCounter) + ".txt", phi, delimiter="\n")
+			sys.stdout.write("\r" + str(int(pictureCounter * 100 / steps)) + "%")
+			sys.stdout.flush()
+
 		time += dt
 		pictureCounter += 1
-		
-	dataFile.close()
 
+	n_files = len(fn.filter(os.listdir(rawFolder), '*[0-9].txt'))
 	def animate(i):
-		fname = outputDir + "/" + str(i * writeStep) + ".txt"
+		fname = rawFolder + str(i * writeStep) + ".txt"
 		with open(fname, "r") as f:
 			content = f.readlines()
 
@@ -149,7 +154,7 @@ def run(beta, timeStepMethod, dx = 0):
 
 		line.set_ydata(content)
 
-	anim = FuncAnimation(fig, animate, interval=dt * 1000, frames=int((finishTime / dt) / writeStep))
+	anim = FuncAnimation(fig, animate, interval=dt * 1000, frames=n_files)
 	anim.save(anim_file)
 		
 	#get phase difference
@@ -158,14 +163,14 @@ def run(beta, timeStepMethod, dx = 0):
 	return phaseS
 
 phaseShifts = [run(beta, rk4) for beta in betas]
-betaGammas = [beta / math.sqrt(1 - beta**2) for beta in betas]
+betaGammas = [beta / gamma(beta) for beta in betas]
 
-phaseShift = open("phaseshifts.txt", 'w')
+phaseShift = open(dataFolder + "phaseshifts.txt", 'w')
 for b, p in zip(betaGammas, phaseShifts):
 	phaseShift.write(str(b) + " " + str(p) + "\n")
 phaseShift.close()
 
-plotPhaseShifts.plot(alpha, 1.5, 10)
+plotPhaseShifts.plot(alpha, 1.5, 10, dataFolder)
 
 
 
