@@ -21,7 +21,7 @@ writeStep = 20 # no. compute steps between each write
 betas = np.arange(0.96, 0.999, 0.003)  #set which values of beta to do
 
 experiment = "test_2"
-dataFolder = "data/" + experiment + "/"
+dataFolder = experiment + "/"
 rawFolder = dataFolder + "raw/"
 imagesFolder = dataFolder + "images/"
 anim_file = dataFolder + "anim.mp4"
@@ -92,10 +92,9 @@ def getdx(gamma, howManyPointsAcross):
 	width = abs(inverse(0.2) - inverse(2*math.pi - 0.2))
 	return width / howManyPointsAcross
 
-def run(beta, timeStepMethod, dx = 0):
+def run(experiment, beta, timeStepMethod, dx = 0):
 	gam = gamma(beta)
-	experiment = "test" + str(beta)
-	dataFolder = "data/" + experiment + "/"
+	dataFolder = experiment + "/"
 	rawFolder = dataFolder + "raw/"
 	imagesFolder = dataFolder + "images/"
 	anim_file = dataFolder + "anim.mp4"
@@ -115,8 +114,6 @@ def run(beta, timeStepMethod, dx = 0):
 	ax.set(xlim=(x0, x1), ylim=(initial.plotHeight0, initial.plotHeight1))
 	line = ax.plot(xs, phi, color='k', lw=1)[0]
 
-	if not os.path.exists("data/"):
-		os.mkdir("data/")
 	if not os.path.exists(dataFolder):
 		os.mkdir(dataFolder)
 	if not os.path.exists(imagesFolder):
@@ -162,7 +159,7 @@ def run(beta, timeStepMethod, dx = 0):
 	print("phase shift = " + str(phaseS))
 	return phaseS
 
-phaseShifts = [run(beta, rk4) for beta in betas]
+phaseShifts = [run(experiment, beta, rk4) for beta in betas]
 betaGammas = [beta / gamma(beta) for beta in betas]
 
 phaseShift = open(dataFolder + "phaseshifts.txt", 'w')
