@@ -7,59 +7,30 @@ import os
 from array import array
 
 import phaseShift
-import exactPhaseShift
-
-startSpacing = 10
-alpha = 0.95
-
-def kink1(x,t, beta):
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4 * math.atan(math.exp(gamma*(x+startSpacing - beta * t)))
-def kink1dot(x, beta):
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return -4*beta*gamma*math.exp(gamma*(x+startSpacing))/ (math.exp(gamma*(x+startSpacing))**2 +1)
-
-def kink2(x,t,beta):
-	beta *= -1
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4 * math.atan(math.exp(-gamma*(x-startSpacing - beta * t)))
-def kink2dot(x,beta):
-	beta *= -1
-	gamma = 1 / math.sqrt(1 - beta**2)
-	return 4*beta*gamma*math.exp(-gamma*(x-startSpacing))/ (math.exp(-gamma*(x-startSpacing))**2 +1)
+import plotPhaseShifts
 
 
 
-def doubleKink(x,t,beta):
-	return kink1(x,t,beta) + kink2(x,t,beta) - 2*math.pi
-doubleKinkInitial = lambda x, beta : doubleKink(x,0,beta)
-def doubleKinkInitialDot(x,beta):
-	return kink1dot(x,beta) + kink2dot(x,beta)
+import twokinks as initial
+#import kinkantikink as initial
+alpha = 0
+writeStep = 50                   # no. compute steps between each write
+betas = [0.9, 0.96, 0.98, 0.99]  #set which values of beta to do
+
+
+
+
+
 
 def potential(phi):
 	s = math.sin
 	c = math.cos
 	return s(phi) * ( 1 - alpha * (s(phi)**2 + 2*c(phi) - 2*c(phi)**2))
 
-
-# Born-von Karman (hardwall) boundary conditions
-def BVK_Boundary(phi, pi):
-	phi[0] = 0
-	phi[-1] = 0
-
-
-
-x0 = - startSpacing - 5                        # left simulation boundary
-x1 = startSpacing + 5                      # right simulation boundary
-writeStep = 50                   # no. compute steps between each write
-boundary = BVK_Boundary         # boundary function(phi, pi)
-initial_phi = doubleKinkInitial     # initial phi(x)
-initial_pi = doubleKinkInitialDot	# initial pi(x)
-
-
-betas = [0.9, 0.96, 0.98, 0.99]  #set which values of beta to do
-
-
+x0 = - initial.startSpacing - 5                        # left simulation boundary
+x1 = initial.startSpacing + 5                      # right simulation boundary
+initial_phi = initial.doubleKinkInitial     # initial phi(x)
+initial_pi = initial.doubleKinkInitialDot	# initial pi(x)
 
 class List:
 	def __init__(self, l):
@@ -130,15 +101,16 @@ def getdx(gamma, howManyPointsAcross):
 	def inverse(y):
 		return math.log(abs(math.tan(y/4))) / gamma
 	width = abs(inverse(0.2) - inverse(2*math.pi - 0.2))
-	print("dx = " + str(width / howManyPointsAcross))
 	return width / howManyPointsAcross
 
 
-def run(beta, timeStepMethod):
+def run(beta, timeStepMethod, dx = 0):
 	gamma = 1 / math.sqrt(1 - beta**2)
 	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gamma))
-	dx = getdx(gamma, 80)
+	if dx == 0:
+		dx = getdx(gamma, 80)
 	dt = dx / 2
+	print("dx = " + str(dx))
 	xs = np.arange(x0,x1,dx)
 	phi = List([initial_phi(x,beta) for x in xs])
 	pi = List([initial_pi(x,beta) for x in xs])
@@ -158,22 +130,22 @@ def run(beta, timeStepMethod):
 
 	time = 0
 	pictureCounter = 1
-	finishTime = 2 * startSpacing / beta #distance / speed
+	finishTime = 2 * initial.startSpacing / beta #distance / speed
 	print("Finish time is " + str(finishTime))
 
 	while time < finishTime:
 		timeStepMethod(phi, pi, dt, dx)
-		boundary(phi, pi)
+		initial.boundary(phi, pi)
 		
 		if pictureCounter % writeStep == 0:
-			array('d', phi.li).tofile(dataFile)
+			#array('d', phi.li).tofile(dataFile)
 			
 			plt.clf()
 			plt.plot(xs,phi,'g')
-			plt.plot(xs,[doubleKink(x,time,beta) for x in xs],'b--')
-			plt.xlabel("t")
-			plt.ylabel("phi")
-			plt.axis([x0,x1,-7,7])
+			plt.plot(xs,[initial.doubleKink(x,time,beta) for x in xs],'b--')
+			plt.xlabel("x")
+			plt.ylabel(r"$\phi$")
+			plt.axis([x0,x1, initial.plotHeight0, initial.plotHeight1])
 			plt.grid(True)
 			plt.savefig(folder + "/phi" + str(int(pictureCounter / writeStep)) + ".png")
 		
@@ -183,7 +155,8 @@ def run(beta, timeStepMethod):
 	dataFile.close()
 		
 	#get phase difference
-	phaseS = phaseShift.getPhaseShift(xs, time, lambda x,t : doubleKink(x,t,beta), phi, -math.pi)
+	phaseS = phaseShift.getPhaseShift(xs, time, lambda x,t : initial.doubleKink(x,t,beta), phi, initial.pointToGetPhaseShiftAt)
+	print("phase shift = " + str(phaseS))
 	return phaseS
 
 phaseShifts = [run(beta, rk4) for beta in betas]
@@ -194,25 +167,7 @@ for b, p in zip(betaGammas, phaseShifts):
 	phaseShift.write(str(b) + " " + str(p) + "\n")
 phaseShift.close()
 
-b, p, dxb = exactPhaseShift.getExactPhaseShift(alpha, 1.5, 100)
-
-plt.clf()
-plt.scatter(betaGammas, phaseShifts)
-plt.plot(b,p, 'g')
-plt.xlabel(r"$\beta \gamma$")
-plt.ylabel("phase shift")
-plt.grid(True)
-plt.savefig("phaseshift.png")
-
-print(" ")
-for b, p in zip(betaGammas, phaseShifts):
-	exact = dxb / b
-	print("ratio is  " + str(exact / p))
-print(" ")
-for b, p in zip(betaGammas, phaseShifts):
-	exact = dxb / b
-	print("shift is  " + str(exact - p))
-
+plotPhaseShifts.plot(alpha, 1.5, 10)
 
 
 
