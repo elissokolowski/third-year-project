@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 import exactPhaseShift
 
 
 def plot(alpha, a, b):
-	b, p, dxb = exactPhaseShift.getExactPhaseShift(alpha, a, b)
+	betas, phases = exactPhaseShift.getExactPhaseShift(alpha, a, b)
 	
 	f = open("phaseshifts.txt", 'r')
 	betaGammas = []
@@ -17,9 +18,8 @@ def plot(alpha, a, b):
 	
 	plt.clf()
 	plt.scatter(betaGammas, phaseShifts)
-	plt.plot(b,p, 'g')
+	plt.plot(betas ,phases, 'g')
 	plt.xlabel(r"$\beta \gamma$")
 	plt.ylabel("phase shift")
 	plt.grid(True)
 	plt.savefig("phaseshift.png")
-
