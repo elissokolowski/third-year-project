@@ -16,11 +16,11 @@ import plotPhaseShifts
 
 import twokinks as initial
 #import kinkantikink as initial
-alpha = 0.5
+alpha = 0
 writeStep = 20 # no. compute steps between each write
 betas = np.arange(0.96, 0.999, 0.003)  #set which values of beta to do
 
-experiment = "test_2"
+experiment = "test_alpha_zero"
 dataFolder = experiment + "/"
 rawFolder = dataFolder + "raw/"
 imagesFolder = dataFolder + "images/"
@@ -160,14 +160,14 @@ def run(experiment, beta, timeStepMethod, dx = 0):
 	return phaseS
 
 phaseShifts = [run(experiment, beta, rk4) for beta in betas]
-betaGammas = [beta / gamma(beta) for beta in betas]
+betaGammas = [beta * gamma(beta) for beta in betas]
 
 phaseShift = open(dataFolder + "phaseshifts.txt", 'w')
 for b, p in zip(betaGammas, phaseShifts):
 	phaseShift.write(str(b) + " " + str(p) + "\n")
 phaseShift.close()
 
-plotPhaseShifts.plot(alpha, 1.5, 10, dataFolder)
+plotPhaseShifts.plot(alpha, 1.5, 25, dataFolder)
 
 
 
