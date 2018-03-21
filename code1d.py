@@ -14,31 +14,16 @@ import plotPhaseShifts
 
 
 
-import twokinks as initial
-#import kinkantikink as initial
-alpha = 0
-writeStep = 20 # no. compute steps between each write
-betas = np.arange(0.96, 0.999, 0.003)  #set which values of beta to do
-
-experiment = "test_alpha_zero"
-dataFolder = experiment + "/"
-rawFolder = dataFolder + "raw/"
-imagesFolder = dataFolder + "images/"
-anim_file = dataFolder + "anim.mp4"
-
+writeStep = 3 # no. compute steps between each write
+experiments = ["test_1", "test_2"]
 
 def gamma(v):
 	return 1 / math.sqrt(1 - v**2)
 
-def potential(phi):
+def potentialWithAlpha(phi, alpha):
 	s = math.sin
 	c = math.cos
 	return s(phi) * ( 1 - alpha * (s(phi)**2 + 2*c(phi) - 2*c(phi)**2))
-
-x0 = - initial.startSpacing - 5                        # left simulation boundary
-x1 = initial.startSpacing + 5                      # right simulation boundary
-initial_phi = initial.doubleKinkInitial     # initial phi(x)
-initial_pi = initial.doubleKinkInitialDot	# initial pi(x)
 
 def getSecondDerivative(f,h):
 	d2 = []
@@ -84,26 +69,36 @@ def rk4(phi, pi, dt, dx):
 
 	pi += (k1 + k2 * 2 + k3 * 2 + k4) * (float(1)/6)
 	phi += (l1 + l2 * 2 + l3 * 2 + l4) * (float(1)/6)
-
 	
-def getdx(gamma, howManyPointsAcross):
-	def inverse(y):
-		return math.log(abs(math.tan(y/4))) / gamma
-	width = abs(inverse(0.2) - inverse(2*math.pi - 0.2))
-	return width / howManyPointsAcross
+	
 
-def run(experiment, beta, timeStepMethod, dx = 0):
-	gam = gamma(beta)
-	dataFolder = experiment + "/"
+def run(experiment):
+	dataFolder = "experiments/" + experiment + "/"
 	rawFolder = dataFolder + "raw/"
 	imagesFolder = dataFolder + "images/"
 	anim_file = dataFolder + "anim.mp4"
-
+	
+	settings = plotPhaseShifts.Settings(experiment)
+	if settings.kinkType == "kinkkink":
+		import twokinks as initial
+	elif settings.kinkType == "kinkantikink":
+		import kinkantikink as initial
+	beta = settings.beta
+	gam = settings.gam
+	alpha = settings.alpha
+	dx = settings.dx
+	
+	global potential
+	potential = lambda phi : potentialWithAlpha(phi, alpha)
+	
+	
+	x0 = - initial.startSpacing - 5                        # left simulation boundary
+	x1 = initial.startSpacing + 5                      # right simulation boundary
+	initial_phi = initial.doubleKinkInitial     # initial phi(x)
+	initial_pi = initial.doubleKinkInitialDot	# initial pi(x)
+	
 	print("\nRunning with beta = " + str(beta) + "    gamma = " + str(gam))
-
-	dx = getdx(gam,80)
 	dt = dx / float(1.2)
-
 	print("dx = " + str(dx))
 
 	xs = np.arange(x0,x1,dx)
@@ -113,6 +108,7 @@ def run(experiment, beta, timeStepMethod, dx = 0):
 	fig, ax = plt.subplots(figsize=(5, 4))
 	ax.set(xlim=(x0, x1), ylim=(initial.plotHeight0, initial.plotHeight1))
 	line = ax.plot(xs, phi, color='k', lw=1)[0]
+	lineExact = ax.plot(xs, [initial.doubleKink(x, 0, beta) for x in xs], color='g', lw=1)[0]
 
 	if not os.path.exists(dataFolder):
 		os.mkdir(dataFolder)
@@ -130,7 +126,7 @@ def run(experiment, beta, timeStepMethod, dx = 0):
 	print("Number of time steps: " + str(steps))
 
 	while time < finishTime:
-		timeStepMethod(phi, pi, dt, dx)
+		rk4(phi, pi, dt, dx)
 		initial.boundary(phi, pi)
 		
 		if pictureCounter % writeStep == 0:
@@ -142,6 +138,9 @@ def run(experiment, beta, timeStepMethod, dx = 0):
 		pictureCounter += 1
 
 	n_files = len(fn.filter(os.listdir(rawFolder), '*[0-9].txt'))
+	
+	print("\nNow animating")
+	
 	def animate(i):
 		fname = rawFolder + str(i * writeStep) + ".txt"
 		with open(fname, "r") as f:
@@ -150,24 +149,22 @@ def run(experiment, beta, timeStepMethod, dx = 0):
 		content = [float(x.strip()) for x in content]
 
 		line.set_ydata(content)
+		lineExact.set_ydata([initial.doubleKink(x, i * dt * writeStep, beta) for x in xs])
 
-	anim = FuncAnimation(fig, animate, interval=dt * 1000, frames=n_files)
+	anim = FuncAnimation(fig, animate, interval=dt*1000*writeStep, frames=n_files)
 	anim.save(anim_file)
 		
 	#get phase difference
 	phaseS = phaseShift.getPhaseShift(xs, time, lambda x,t : initial.doubleKink(x,t,beta), phi, initial.pointToGetPhaseShiftAt)
-	print("phase shift = " + str(phaseS))
+	print("\nphase shift = " + str(phaseS))
+	phaseShiftFile = open("experiments/" + experiment + "/phaseshift.txt", 'w')
+	phaseShiftFile.write(str(phaseS))
+	phaseShiftFile.close()
 	return phaseS
 
-phaseShifts = [run(experiment, beta, rk4) for beta in betas]
-betaGammas = [beta * gamma(beta) for beta in betas]
+phaseShifts = [run(experiment) for experiment in experiments]
 
-phaseShift = open(dataFolder + "phaseshifts.txt", 'w')
-for b, p in zip(betaGammas, phaseShifts):
-	phaseShift.write(str(b) + " " + str(p) + "\n")
-phaseShift.close()
-
-plotPhaseShifts.plot(alpha, 1.5, 25, dataFolder)
+plotPhaseShifts.plot(0, 1.5, 10)
 
 
 
